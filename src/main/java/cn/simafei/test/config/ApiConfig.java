@@ -17,6 +17,7 @@ public class ApiConfig {
         Element rootElement = document.getRootElement();
 
         rootUrl = rootElement.element("rootUrl").getTextTrim();
+        useCookie = Boolean.valueOf(rootElement.element("useCookie").getTextTrim());
         @SuppressWarnings("unchecked")
         List<Element> paramElements = rootElement.element("params").elements("param");
         paramElements.forEach((ele) -> params.put(ele.attributeValue("name").trim(),
@@ -28,6 +29,12 @@ public class ApiConfig {
     }
 
     private String rootUrl;
+
+    private boolean useCookie;
+
+    public boolean isUseCookie() {
+        return useCookie;
+    }
 
     private Map<String, String> params = new HashMap<>();
 
@@ -44,6 +51,5 @@ public class ApiConfig {
     public Map<String, String> getHeaders() {
         return headers;
     }
-
 
 }

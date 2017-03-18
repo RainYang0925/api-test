@@ -1,9 +1,10 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <rootUrl>http://91washuju.com/api/</rootUrl>
-
+    <useCookie>true</useCookie>
     <headers>
-        <header name="Content-Type" value="application/json"></header>
+        <!--<header name="Content-Type" value="application/json"></header>-->
+        <header name="Cookie" value="JSESSIONID=E433842EF7DBE933F799F2F263EEABD4"></header>
     </headers>
     <params>
         <param name="test_appid" value="FSAID_131672c"></param>

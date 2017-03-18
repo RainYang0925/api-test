@@ -4,8 +4,6 @@ import cn.simafei.test.config.ApiConfig;
 import cn.simafei.test.utils.ParamUtil;
 import cn.simafei.test.utils.ReportUtil;
 import org.apache.http.Header;
-import org.apache.http.cookie.Cookie;
-import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.message.BasicHeader;
 
 import java.util.ArrayList;
@@ -23,19 +21,21 @@ import java.util.regex.Pattern;
 public class HTTPCache {
 
     private String rootUrl;
+    private boolean useCookie;
     private Map<String, String> paramMap;
     private List<Header> headers;
-    private List<Cookie> cookies;
+    private Map<String, String> cookies;
 
     public HTTPCache() {
         paramMap = new HashMap<>();
         headers = new ArrayList<>();
-        cookies = new ArrayList<>();
+        cookies = new HashMap<>();
     }
 
     public HTTPCache(ApiConfig apiConfig) {
         this();
         this.rootUrl = apiConfig.getRootUrl();
+        this.useCookie = apiConfig.isUseCookie();
         addParam(apiConfig.getParams());
         for (Map.Entry<String, String> entry : apiConfig.getHeaders().entrySet()) {
             addHeader(entry.getKey(), entry.getValue());
@@ -44,6 +44,7 @@ public class HTTPCache {
 
     /**
      * 提取json串中的值保存至公共池中
+     *
      * @param json    将被提取的json串。
      * @param allSave 所有将被保存的数据：xx=$.jsonpath.xx;oo=$.jsonpath.oo，将$.jsonpath.
      *                xx提取出来的值存放至公共池的xx中，将$.jsonpath.oo提取出来的值存放至公共池的oo中
@@ -77,11 +78,7 @@ public class HTTPCache {
     }
 
     public void addCookie(String name, String value) {
-        cookies.add(new BasicClientCookie(name, value));
-    }
-
-    public void addCookie(Cookie cookie) {
-        cookies.add(cookie);
+        cookies.put(name, value);
     }
 
     public void addHeader(Header header) {
@@ -89,6 +86,14 @@ public class HTTPCache {
     }
 
     public void addHeader(String name, String value) {
+        Header oldHeader = null;
+        for (Header header : headers) {
+            if (name.equals(header.getName())) {
+                oldHeader = header;
+                break;
+            }
+        }
+        headers.remove(oldHeader);
         headers.add(new BasicHeader(name, value));
     }
 
@@ -100,11 +105,19 @@ public class HTTPCache {
         return headers;
     }
 
-    public List<Cookie> getCookies() {
+    public Map<String, String> getCookies() {
         return cookies;
+    }
+
+    public void setCookies(Map<String, String> cookies) {
+        this.cookies = cookies;
     }
 
     public String getRootUrl() {
         return rootUrl;
+    }
+
+    public boolean isUseCookie() {
+        return useCookie;
     }
 }

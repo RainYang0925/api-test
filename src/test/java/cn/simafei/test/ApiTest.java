@@ -9,7 +9,6 @@ import cn.simafei.test.beans.BaseBean;
 import cn.simafei.test.http.HTTPCache;
 import cn.simafei.test.http.SSLClient;
 import cn.simafei.test.utils.*;
-import org.apache.http.params.CoreConnectionPNames;
 import org.dom4j.DocumentException;
 import org.testng.Assert;
 import org.testng.ITestContext;
@@ -53,8 +52,6 @@ public class ApiTest {
         cache = new HTTPCache(apiConfig);
 
         client = new SSLClient(cache);
-        client.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 60000); // 请求超时
-        client.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, 60000); // 读取超时
     }
 
     @Parameters({"excelName", "sheetName"})
@@ -107,7 +104,7 @@ public class ApiTest {
         }
     }
 
-    protected <T extends BaseBean> List<T> readExcelData(Class<T> clz,
+    private <T extends BaseBean> List<T> readExcelData(Class<T> clz,
                                                          String[] excelPathArr, String[] sheetNameArr)
             throws DocumentException {
         List<T> allExcelData = new ArrayList<>();
@@ -123,9 +120,7 @@ public class ApiTest {
                     temArrayList.addAll(ExcelUtil.readExcel(clz, filePath, sheetName));
                 }
             }
-            temArrayList.forEach((bean) -> {
-                bean.setExcelName(excelPath);
-            });
+            temArrayList.forEach((bean) -> bean.setExcelName(excelPath));
             allExcelData.addAll(temArrayList);
         }
         return allExcelData;

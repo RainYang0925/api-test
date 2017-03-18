@@ -4,67 +4,72 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import cn.simafei.test.beans.ApiDataBean;
 import cn.simafei.test.exceptions.ErrorRespStatusException;
 import cn.simafei.test.utils.*;
+import org.apache.commons.codec.Charsets;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
+import org.apache.http.client.CookieStore;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
+import org.apache.http.config.ConnectionConfig;
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.config.SocketConfig;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.BasicCookieStore;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
 import org.testng.Assert;
 
-public class SSLClient extends DefaultHttpClient {
+public class SSLClient {
     private HTTPCache cache;
+    private PoolingHttpClientConnectionManager poolConnManager;
+    private CookieStore cookieStore = new BasicCookieStore();
 
     public SSLClient(HTTPCache cache) throws Exception {
         this.cache = cache;
-        SSLContext ctx = SSLContext.getInstance("TLS");
-        X509TrustManager tm = new X509TrustManager() {
-            public void checkClientTrusted(X509Certificate[] chain,
-                                           String authType) throws CertificateException {
-            }
 
-            public void checkServerTrusted(X509Certificate[] chain,
-                                           String authType) throws CertificateException {
-            }
-
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-        };
-        ctx.init(null, new TrustManager[]{tm}, null);
-        SSLSocketFactory ssf = new SSLSocketFactory(ctx,
-                SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-        ClientConnectionManager ccm = this.getConnectionManager();
-        SchemeRegistry sr = ccm.getSchemeRegistry();
-        sr.register(new Scheme("https", 443, ssf));
+        SSLContext ctx = SSLContexts.custom().loadTrustMaterial(null, (chain, authType) -> true).build();
+        SSLConnectionSocketFactory ssf = new SSLConnectionSocketFactory(ctx, NoopHostnameVerifier.INSTANCE);
+        Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
+                .register("http", PlainConnectionSocketFactory.getSocketFactory()).register("https", ssf).build();
+        // 初始化连接管理器
+        poolConnManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
+        poolConnManager.setMaxTotal(Constants.CLIENT_POOL_MAX_SIZE);
+        poolConnManager.setDefaultMaxPerRoute(Constants.MAX_PER_ROUTE);
+        poolConnManager.setDefaultConnectionConfig(
+                ConnectionConfig.custom().setCharset(Charsets.toCharset(Constants.DEFAULT_ENCODE)).build());
+        poolConnManager.setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(Constants.SOCKET_TIMEOUT)
+                .setTcpNoDelay(Constants.IS_TCP_NO_DELAY).build());
     }
+
 
     /**
      * 格式化url,替换路径参数等。
      */
-    public String getRequestUrl(String root, String path) {
+    private String getRequestUrl(String root, String path) {
         // 替换url中的参数
         path = ParamUtil.replaceFunc(path, cache.getParamMap());
         if (path.startsWith("http")) {
@@ -80,12 +85,19 @@ public class SSLClient extends DefaultHttpClient {
         }
     }
 
+    private CloseableHttpClient getHttpsClient() {
+        return HttpClients.custom().setConnectionManager(poolConnManager)
+                .setDefaultRequestConfig(RequestConfig.custom()
+                        .setConnectTimeout(Constants.CONNECT_TIMEOUT)
+                        .setSocketTimeout(Constants.SOCKET_TIMEOUT).build())
+                .setDefaultCookieStore(cookieStore)
+                .build();
+    }
     /**
      * 封装请求方法
-     * TODO 添加Cookie
      * @return 请求方法
      */
-    public HttpUriRequest createHttpRequest(ApiDataBean apiDataBean) throws UnsupportedEncodingException {
+    private HttpUriRequest createHttpRequest(ApiDataBean apiDataBean) throws UnsupportedEncodingException {
         // 处理url
         String url = getRequestUrl(cache.getRootUrl(), apiDataBean.getUrl());
         String body = apiDataBean.getBody();
@@ -103,7 +115,6 @@ public class SSLClient extends DefaultHttpClient {
         if ("post".equalsIgnoreCase(method)) {
             // 封装post方法
             HttpPost postMethod = new HttpPost(url);
-
             postMethod.setHeaders(headers.toArray(new Header[headers.size()]));
 
             if (apiDataBean.isPostJson()) {
@@ -129,10 +140,9 @@ public class SSLClient extends DefaultHttpClient {
     public String sendRequest(ApiDataBean apiDataBean) throws IOException, ErrorRespStatusException {
         // 封装请求方法
         HttpUriRequest method = createHttpRequest(apiDataBean);
-        String responseData;
+        String result;
         try {
-            // 执行
-            HttpResponse response = execute(method);
+            HttpResponse response = getHttpsClient().execute(method);
             int responseStatus = response.getStatusLine().getStatusCode();
             if (StringUtil.isNotEmpty(apiDataBean.getStatus())) {
                 Assert.assertEquals(responseStatus + "", apiDataBean.getStatus(), "返回状态码与预期不符合!");
@@ -142,20 +152,36 @@ public class SSLClient extends DefaultHttpClient {
                     throw new ErrorRespStatusException("返回状态码异常：" + responseStatus);
                 }
             }
-            responseData = getResult(response);
+
+            if (cache.isUseCookie()) {
+                StringBuilder sb = new StringBuilder();
+                int i = 0;
+                for (Cookie cookie : cookieStore.getCookies()) {
+                    cache.addCookie(cookie.getName(), cookie.getValue());
+                }
+                for (Map.Entry<String, String> entry : cache.getCookies().entrySet()) {
+                    if (i++ > 0) {
+                        sb.append("; ");
+                    }
+                    sb.append(entry.getKey()).append("=").append(entry.getValue());
+                }
+                cache.addHeader("Cookie", sb.toString());
+            }
+            result = getResult(response);
         } finally {
             method.abort();
         }
         // 输出返回数据log
-        ReportUtil.log("resp:" + responseData);
+        ReportUtil.log("resp:" + result);
 
         // 对返回结果进行提取保存。
-        cache.saveResult(responseData, apiDataBean.getSave());
+        cache.saveResult(result, apiDataBean.getSave());
 
-        return responseData;
+        return result;
     }
 
     private String getResult(HttpResponse response) throws IOException {
+        String result;
         HttpEntity respEntity = response.getEntity();
         Header respContentType = response.getFirstHeader("Content-Type");
         if (respContentType != null
@@ -169,9 +195,11 @@ public class SSLClient extends DefaultHttpClient {
             InputStream is = response.getEntity().getContent();
             Assert.assertTrue(FileUtil.writeFile(is, filePath), "下载文件失败。");
             // 将下载文件的路径放到{"filePath":"path"}进行返回
-            return "{\"filePath\":\"" + filePath + "\"}";
+            result = "{\"filePath\":\"" + filePath + "\"}";
         } else {
-            return EntityUtils.toString(respEntity);
+            result =  EntityUtils.toString(respEntity);
         }
+        EntityUtils.consume(respEntity);
+        return result;
     }
 }
