@@ -19,16 +19,12 @@ public class ApiConfig {
         rootUrl = rootElement.element("rootUrl").getTextTrim();
         @SuppressWarnings("unchecked")
         List<Element> paramElements = rootElement.element("params").elements("param");
-        paramElements.forEach((ele) -> {
-            params.put(ele.attributeValue("name").trim(),
-                    ele.attributeValue("value").trim());
-        });
+        paramElements.forEach((ele) -> params.put(ele.attributeValue("name").trim(),
+                ele.attributeValue("value").trim()));
         @SuppressWarnings("unchecked")
         List<Element> headerElements = rootElement.element("headers").elements("header");
-        headerElements.forEach((ele) -> {
-            headers.put(ele.attributeValue("name").trim(),
-                    ele.attributeValue("value").trim());
-        });
+        headerElements.forEach((ele) -> headers.put(ele.attributeValue("name").trim(),
+                ele.attributeValue("value").trim()));
     }
 
     private String rootUrl;

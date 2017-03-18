@@ -2,7 +2,7 @@ package cn.simafei.test.functions;
 
 import cn.simafei.test.utils.RandomUtil;
 
-public class RandomStrArrFucntion implements Function{
+public class RandomStrArrFunction implements Function{
 
 	@Override
 	public String execute(String[] args) {
@@ -28,7 +28,6 @@ public class RandomStrArrFucntion implements Function{
 
 	@Override
 	public String getReferenceKey() {
-		// TODO Auto-generated method stub
 		return "randomStrArr";
 	}
 

@@ -97,14 +97,14 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.fs</groupId>
+			<groupId>cn.simafei</groupId>
 			<artifactId>reportng</artifactId>
 			<version>1.1.9</version>
 			<scope>system</scope>
 			<systemPath>${project.basedir}/libs/reportng-1.1.9.jar</systemPath>
 		</dependency>
 		<dependency>
-			<groupId>com.fs</groupId>
+			<groupId>cn.simafei</groupId>
 			<artifactId>velocity</artifactId>
 			<version>1.7-dep</version>
 			<scope>system</scope>

@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import cn.simafei.test.beans.ApiDataBean;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -18,7 +19,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import com.alibaba.fastjson.JSONObject;
-import cn.simafei.test.beans.ApiDataExcelBean;
 
 public class ExcelUtil {
 
@@ -195,7 +195,7 @@ public class ExcelUtil {
 
     public static void main(String arg[]) {
         String excelName = "AutoTestCase.xls";
-        List<ApiDataExcelBean> dataList = ExcelUtil.readExcel(ApiDataExcelBean.class, excelName); // 根据excel名称读取excel
+        List<ApiDataBean> dataList = ExcelUtil.readExcel(ApiDataBean.class, excelName); // 根据excel名称读取excel
         assert dataList != null;
         dataList.forEach(System.out::println);
     }
