@@ -15,7 +15,6 @@ public class SubFunction implements Function{
 
 	@Override
 	public String getReferenceKey() {
-		// TODO Auto-generated method stub
 		return "sub";
 	}
 

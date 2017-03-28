@@ -1,15 +1,14 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <root>
     <rootUrl>http://91washuju.com/api/</rootUrl>
-
+    <useCookie>true</useCookie>
     <headers>
-        <header name="Content-Type" value="application/json"></header>
+        <!--<header name="Content-Type" value="application/json"></header>-->
+        <header name="Cookie" value="JSESSIONID=E433842EF7DBE933F799F2F263EEABD4"></header>
     </headers>
     <params>
         <param name="test_appid" value="FSAID_131672c"></param>
         <param name="test_appSecret" value="b161ec094c31486ca156b5763f62b391"></param>
         <param name="test_permanentCode" value="F4DBD9478E5B70A3A17CD29B96E6BAF3"></param>
-        <param name="test_serviceId" value="FSAID_bec0105"></param><!-- 该应用绑定的服务号id 消息二期接口需要用到 -->
-        <param name="test_openUserId" value="FSUID_48ABCFBB5784317778C0B83607706A9B"></param>
     </params>
 </root>

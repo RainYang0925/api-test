@@ -9,9 +9,8 @@ import cn.simafei.test.functions.Function;
 public class FunctionUtil{
 
 	private static final Map<String, Class<? extends Function>> functionsMap = new HashMap<>();
+
 	static {
-		//bodyfile 特殊处理
-		functionsMap.put("bodyfile", null);
 		List<Class<?>> clazzes = ClassFinder.getAllAssignedClass(Function.class);
 		clazzes.forEach((clazz) -> {
 			try {
