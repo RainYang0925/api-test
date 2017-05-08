@@ -1,7 +1,6 @@
 package cn.simafei.test.http;
 
 import cn.simafei.test.config.ApiConfig;
-import cn.simafei.test.utils.ParamUtil;
 import cn.simafei.test.utils.ReportUtil;
 import org.apache.http.Header;
 import org.apache.http.message.BasicHeader;
@@ -10,15 +9,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Created by fengpj on 2017/3/18.
  * 缓存设置的http请求参数，服务器保存的参数
  * Cookies， Headers
  */
-public class HTTPCache {
+public class HttpStorage {
 
     private String rootUrl;
     private boolean useCookie;
@@ -26,46 +23,19 @@ public class HTTPCache {
     private List<Header> headers;
     private Map<String, String> cookies;
 
-    public HTTPCache() {
+    public HttpStorage() {
         paramMap = new HashMap<>();
         headers = new ArrayList<>();
         cookies = new HashMap<>();
     }
 
-    public HTTPCache(ApiConfig apiConfig) {
+    public HttpStorage(ApiConfig apiConfig) {
         this();
         this.rootUrl = apiConfig.getRootUrl();
         this.useCookie = apiConfig.isUseCookie();
         addParam(apiConfig.getParams());
         for (Map.Entry<String, String> entry : apiConfig.getHeaders().entrySet()) {
             addHeader(entry.getKey(), entry.getValue());
-        }
-    }
-
-    /**
-     * 提取json串中的值保存至公共池中
-     *
-     * @param json    将被提取的json串。
-     * @param allSave 所有将被保存的数据：xx=$.jsonpath.xx;oo=$.jsonpath.oo，将$.jsonpath.
-     *                xx提取出来的值存放至公共池的xx中，将$.jsonpath.oo提取出来的值存放至公共池的oo中
-     */
-    public void saveResult(String json, String allSave) {
-        if (null == json || "".equals(json) || null == allSave
-                || "".equals(allSave)) {
-            return;
-        }
-        allSave = ParamUtil.replaceParam(allSave, paramMap);
-        String[] saves = allSave.split(";");
-        String key, value;
-        for (String save : saves) {
-            Pattern pattern = Pattern.compile("([^;=]*)=([^;]*)");
-            Matcher m = pattern.matcher(save.trim());
-            while (m.find()) {
-                key = ParamUtil.replaceResult(json, m.group(1));
-                value = ParamUtil.replaceResult(json, m.group(2));
-                ReportUtil.log(String.format("存储公共参数   %s值为：%s.", key, value));
-                addParam(key, value);
-            }
         }
     }
 

@@ -62,9 +62,8 @@ public class ParamUtil {
         Matcher m = REPLACE_PATTERN.matcher(param);// 取公共参数正则
         while (m.find()) {
             String replaceKey = m.group(1);
-            String value;
             // 从公共参数池中获取值
-            value = saveMap.get(replaceKey);
+            String value = saveMap.get(replaceKey);
             // 如果公共参数池中未能找到对应的值，该用例失败。
             Assert.assertNotNull(value, String.format("格式化参数失败，公共参数中找不到%s。", replaceKey));
             param = param.replace(m.group(), value);

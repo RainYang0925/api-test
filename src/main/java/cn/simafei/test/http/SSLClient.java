@@ -12,6 +12,9 @@ import javax.net.ssl.SSLContext;
 
 import cn.simafei.test.beans.ApiDataBean;
 import cn.simafei.test.exceptions.ErrorRespStatusException;
+import cn.simafei.test.handler.JsonResponseHandler;
+import cn.simafei.test.handler.ResponseHandler;
+import cn.simafei.test.handler.ResponseHandlerFactory;
 import cn.simafei.test.utils.*;
 import org.apache.commons.codec.Charsets;
 import org.apache.http.Header;
@@ -44,12 +47,12 @@ import org.apache.http.util.EntityUtils;
 import org.testng.Assert;
 
 public class SSLClient {
-    private HTTPCache cache;
+    private HttpStorage storage;
     private PoolingHttpClientConnectionManager poolConnManager;
     private CookieStore cookieStore = new BasicCookieStore();
 
-    public SSLClient(HTTPCache cache) throws Exception {
-        this.cache = cache;
+    public SSLClient(HttpStorage storage) throws Exception {
+        this.storage = storage;
 
         SSLContext ctx = SSLContexts.custom().loadTrustMaterial(null, (chain, authType) -> true).build();
         SSLConnectionSocketFactory ssf = new SSLConnectionSocketFactory(ctx, NoopHostnameVerifier.INSTANCE);
@@ -71,7 +74,7 @@ public class SSLClient {
      */
     private String getRequestUrl(String root, String path) {
         // 替换url中的参数
-        path = ParamUtil.replaceFunc(path, cache.getParamMap());
+        path = ParamUtil.replaceFunc(path, storage.getParamMap());
         if (path.startsWith("http")) {
             return path;
         }
@@ -99,7 +102,7 @@ public class SSLClient {
      */
     private HttpUriRequest createHttpRequest(ApiDataBean apiDataBean) throws UnsupportedEncodingException {
         // 处理url
-        String url = getRequestUrl(cache.getRootUrl(), apiDataBean.getUrl());
+        String url = getRequestUrl(storage.getRootUrl(), apiDataBean.getUrl());
         String body = apiDataBean.getBody();
         String param = apiDataBean.getParam();
         String method = apiDataBean.getMethod();
@@ -110,7 +113,7 @@ public class SSLClient {
         } else {
             ReportUtil.log("param:" + param);
         }
-        List<Header> headers = cache.getHeaders();
+        List<Header> headers = storage.getHeaders();
 
         if ("post".equalsIgnoreCase(method)) {
             // 封装post方法
@@ -118,13 +121,13 @@ public class SSLClient {
             postMethod.setHeaders(headers.toArray(new Header[headers.size()]));
 
             if (apiDataBean.isPostJson()) {
-                HttpEntity entity = new StringEntity(ParamUtil.replaceFunc(body, cache.getParamMap()), StandardCharsets.UTF_8);
+                HttpEntity entity = new StringEntity(ParamUtil.replaceFunc(body, storage.getParamMap()), StandardCharsets.UTF_8);
                 postMethod.setEntity(entity);
             } else if (param != null && !"".equals(param)) {
                 List<NameValuePair> params = new ArrayList<>();
                 for (String pair : param.split("&")) {
                     String[] nameValue = pair.split("=");
-                    params.add(new BasicNameValuePair(nameValue[0], ParamUtil.replaceFunc(nameValue[1], cache.getParamMap())));
+                    params.add(new BasicNameValuePair(nameValue[0], ParamUtil.replaceFunc(nameValue[1], storage.getParamMap())));
                 }
                 postMethod.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
             }
@@ -152,20 +155,8 @@ public class SSLClient {
                     throw new ErrorRespStatusException("返回状态码异常：" + responseStatus);
                 }
             }
-
-            if (cache.isUseCookie()) {
-                StringBuilder sb = new StringBuilder();
-                int i = 0;
-                for (Cookie cookie : cookieStore.getCookies()) {
-                    cache.addCookie(cookie.getName(), cookie.getValue());
-                }
-                for (Map.Entry<String, String> entry : cache.getCookies().entrySet()) {
-                    if (i++ > 0) {
-                        sb.append("; ");
-                    }
-                    sb.append(entry.getKey()).append("=").append(entry.getValue());
-                }
-                cache.addHeader("Cookie", sb.toString());
+            if (storage.isUseCookie()) {
+                saveCookie();
             }
             result = getResult(response);
         } finally {
@@ -173,11 +164,45 @@ public class SSLClient {
         }
         // 输出返回数据log
         ReportUtil.log("resp:" + result);
-
         // 对返回结果进行提取保存。
-        cache.saveResult(result, apiDataBean.getSave());
-
+        handleResult(apiDataBean, result);
         return result;
+    }
+
+    private void saveCookie() {
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        for (Cookie cookie : cookieStore.getCookies()) {
+            storage.addCookie(cookie.getName(), cookie.getValue());
+        }
+        for (Map.Entry<String, String> entry : storage.getCookies().entrySet()) {
+            if (i++ > 0) {
+                sb.append("; ");
+            }
+            sb.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+        storage.addHeader("Cookie", sb.toString());
+    }
+
+    private void handleResult(ApiDataBean apiDataBean, String result) {
+        String allSave = ParamUtil.replaceParam(apiDataBean.getSave(), storage.getParamMap());
+
+        ResponseHandler handler;
+        if (StringUtil.isEmpty(apiDataBean.getHandler())) {
+            handler = ResponseHandlerFactory.createFromStrType(result);
+        } else {
+            try {
+                handler = (ResponseHandler) Class.forName(apiDataBean.getHandler()).newInstance();
+            } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                ReportUtil.log("No ResponseHandler:" + apiDataBean.getHandler() + "defined");
+                throw new RuntimeException(e);
+            }
+        }
+        Map<String, Object> map = handler.extractSaveMap(result, allSave);
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            ReportUtil.log(String.format("存储公共参数   %s值为：%s.", entry.getKey(), entry.getValue()));
+            storage.addParam(entry.getKey(), (String) entry.getValue());
+        }
     }
 
     private String getResult(HttpResponse response) throws IOException {

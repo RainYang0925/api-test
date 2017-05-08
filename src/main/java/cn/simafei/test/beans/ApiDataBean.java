@@ -1,5 +1,6 @@
 package cn.simafei.test.beans;
 
+import cn.simafei.test.handler.ResponseHandler;
 import cn.simafei.test.utils.StringUtil;
 
 public class ApiDataBean extends BaseBean {
@@ -15,8 +16,17 @@ public class ApiDataBean extends BaseBean {
 	private String verify;
 	private String save;
 	private String preParam;
+	private String handler;
 
-	public String getCaseScene() {
+    public String getHandler() {
+        return handler;
+    }
+
+    public void setHandler(String handler) {
+        this.handler = handler;
+    }
+
+    public String getCaseScene() {
 		return caseScene;
 	}
 

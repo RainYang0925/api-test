@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import cn.simafei.test.beans.BaseBean;
-import cn.simafei.test.http.HTTPCache;
+import cn.simafei.test.http.HttpStorage;
 import cn.simafei.test.http.SSLClient;
 import cn.simafei.test.utils.*;
 import org.dom4j.DocumentException;
@@ -28,7 +28,7 @@ import cn.simafei.test.listeners.RetryListener;
 @Listeners({AutoTestListener.class, RetryListener.class})
 public class ApiTest {
 
-    private static HTTPCache cache;
+    private static HttpStorage storage;
 
     /**
      * 所有api测试用例数据
@@ -48,10 +48,9 @@ public class ApiTest {
         ReportUtil.log("api config path:" + configFilePath);
         ApiConfig apiConfig = new ApiConfig(configFilePath);
 
+        storage = new HttpStorage(apiConfig);
 
-        cache = new HTTPCache(apiConfig);
-
-        client = new SSLClient(cache);
+        client = new SSLClient(storage);
     }
 
     @Parameters({"excelName", "sheetName"})
@@ -85,7 +84,7 @@ public class ApiTest {
         if (StringUtil.isEmpty(verifyStr)) {
             return;
         }
-        String allVerify = ParamUtil.replaceParam(verifyStr, cache.getParamMap());
+        String allVerify = ParamUtil.replaceParam(verifyStr, storage.getParamMap());
         ReportUtil.log("验证数据：" + allVerify);
         if (contains) {
             // 验证结果包含
@@ -105,7 +104,7 @@ public class ApiTest {
     }
 
     private <T extends BaseBean> List<T> readExcelData(Class<T> clz,
-                                                         String[] excelPathArr, String[] sheetNameArr)
+                                                       String[] excelPathArr, String[] sheetNameArr)
             throws DocumentException {
         List<T> allExcelData = new ArrayList<>();
 
